@@ -1,0 +1,18 @@
+{
+  "name": "FileTransferServer",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon --inspect=9230 --delay 2500ms ./index.js"
+  },
+  "repository": "https://github.com/Vaker227/FileTransferServer.git",
+  "author": "linh <hoanglinhzed@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^4.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
+  }
+}
