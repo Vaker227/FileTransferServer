@@ -5,7 +5,7 @@ module.exports = function (io) {
   roomEvents(io);
   io.on("connection", (socket) => {
     socket.on("disconnect", (reason) => {
-      console.log(reason);
+      console.log(reason); // transport
       delete clients[socket.id];
       updateClientsList(io);
     });
@@ -13,18 +13,13 @@ module.exports = function (io) {
       clients[socket.id] = data;
       socket.join("public-room");
     });
+    // implement private connection
     socket.on("request-private-connection", (targetSocketID, requestCB) => {
-      if (socket.rooms.size >= 3) {
-        let roomID;
-        socket.rooms.forEach((value) => {
-          if (regexPrivateRoom.test(value)) {
-            roomID = value;
-          }
-        });
-        requestCB("already in connection: " + roomID);
+      const targetSocket = io.of("/").sockets.get(targetSocketID);
+      if (targetSocket.rooms.size >= 3) {
+        requestCB("busy");
         return;
       }
-      const targetSocket = io.of("/").sockets.get(targetSocketID);
       // send request to target
       io.to(targetSocketID).emit("request-private-connection", socket.id);
       // handle reponse from target
@@ -51,31 +46,23 @@ module.exports = function (io) {
       // handle if target timeout
       let handleTimeout = setTimeout(() => {
         targetSocket.removeAllListeners("response-private-connection");
-        targetSocket.once(
-          "response-private-connection",
-          (requestedSocketID, targetSocketId, receiveCB) => {
-            if (!requestedSocketID) {
-              return;
-            }
-            receiveCB("timeout");
-          }
-        );
         requestCB("timeout");
       }, 6000);
     });
-    privateMessage(socket);
+    // all listener when in private room
+    privateRoom(io, socket);
   });
 };
 
 function roomEvents(io) {
   io.of("/").adapter.on("join-room", (room, id) => {
-    console.log(io.of("/").adapter.rooms);
+    // console.log(io.of("/").adapter.rooms);
     if (room === "public-room") {
       updateClientsList(io);
     }
   });
   io.of("/").adapter.on("leave-room", (room, id) => {
-    // exit last client when a connected client disconnect
+    // exit last client when a connected client disconnect from server
     if (regexPrivateRoom.test(room)) {
       const lastClientID = io
         .of("/")
@@ -109,14 +96,32 @@ function configPrivateConnection(
   if (isJoin) {
     io.of("/").sockets.get(requestID).join(roomID);
     io.of("/").sockets.get(targetID).join(roomID);
+    io.to(requestID).emit("update-target-user-data", clients[targetID]);
+    io.to(targetID).emit("update-target-user-data", clients[requestID]);
     return;
   }
+  // leave room
+  io.to(roomID).emit("target-leave-private-connection");
   io.of("/").sockets.get(requestID).leave(roomID);
   io.of("/").sockets.get(targetID).leave(roomID);
 }
 
-function privateMessage(socket) {
-  socket.on("private-send-message", (message, roomID) => {
-    socket.to(roomID).emit("private-send-message", message);
+function privateRoom(io, socket) {
+  socket.on("disconnect-room", (roomID, cb) => {
+    socket.leave(roomID);
+    cb("success");
+  });
+  socket.on("private-send-message", (data, roomID) => {
+    io.to(roomID).emit(
+      "private-send-message",
+      Object.assign(data, { user: clients[socket.id].name })
+    );
+  });
+  socket.on("private-exchange-file", (data, roomID) => {
+    socket.to(roomID).emit("private-exchange-file", data);
+  });
+  // webrtc
+  socket.on("signal-data", (data, roomID) => {
+    socket.to(roomID).emit("signal-data", data);
   });
 }
