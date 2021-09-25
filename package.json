@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node index.js",
     "devstart": "nodemon --inspect=9230 --delay 2500ms ./index.js"
   },
   "repository": "https://github.com/Vaker227/FileTransferServer.git",
