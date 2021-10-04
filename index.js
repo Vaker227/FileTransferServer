@@ -1,4 +1,5 @@
 const PORT = process.env.PORT || 3000;
+
 const app = require("express")();
 const httpServer = require("http").createServer(app);
 const io = require("socket.io")(httpServer);
@@ -9,4 +10,4 @@ router(app);
 require("./socketio")(io);
 
 httpServer.listen(PORT);
-console.log(`Server is listening`);
+console.log(`Server is listening port:${PORT}`);
